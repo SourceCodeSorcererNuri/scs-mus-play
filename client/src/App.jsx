@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Volume2, Music, ListMusic, Monitor, Search, User, Disc, Maximize2, Minimize2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = `http://${window.location.hostname}:5000`;
 
 export default function App() {
     const [songs, setSongs] = useState([]);
@@ -941,7 +941,7 @@ export default function App() {
                 <audio
                     ref={audioRef}
                     crossOrigin="anonymous"
-                    src={`${BACKEND_URL}/api/stream/${currentSong.id}`} // Updated endpoint target parameter
+                    src={`${BACKEND_URL}/api/stream/${currentSong.id}`} // 👈 Ensure BACKEND_URL is used dynamically here
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
                     onEnded={() => skipTrack('next')}

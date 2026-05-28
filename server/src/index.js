@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as musicMetadata from 'music-metadata';
 import dotenv from 'dotenv';
+import os from 'os'; // 👈 Imported native OS module to find local IP addresses
 
 // Initialize configuration variables
 dotenv.config();
@@ -36,13 +37,11 @@ const decodePathId = (pathId) => Buffer.from(pathId, 'base64url').toString('utf-
 
 /**
  * 1. ASYNC SCAN MULTI-DIRECTORY LIBRARY ENDPOINT
- * Scans all listed directories, groups them by folder names into auto-playlists, 
- * and merges all valid tracks into a unified master layout.
  */
 app.get('/api/songs', async (req, res) => {
     try {
         const allSongs = [];
-        const folderPlaylists = {}; // Holds map of { folderName: [songIds] }
+        const folderPlaylists = {};
 
         for (const dir of MUSIC_DIRS) {
             if (!fs.existsSync(dir)) {
@@ -57,7 +56,6 @@ app.get('/api/songs', async (req, res) => {
 
             const files = fs.readdirSync(dir);
 
-            // Quick scan for matching lyric files in the current folder execution path
             const lrcFilesSet = new Set(
                 files
                     .filter(file => path.extname(file).toLowerCase() === '.lrc')
@@ -72,7 +70,6 @@ app.get('/api/songs', async (req, res) => {
                 const baseName = path.parse(file).name;
                 const hasLyrics = lrcFilesSet.has(baseName.toLowerCase());
 
-                // Track ID uniquely derived from its absolute file path system location
                 const trackId = encodePathId(fullPath);
 
                 try {
@@ -81,14 +78,14 @@ app.get('/api/songs', async (req, res) => {
 
                     allSongs.push({
                         id: trackId,
-                        filename: file, // Sent for UI naming fallbacks if title metadata is blank
+                        filename: file,
                         title: metadata.common.title || baseName,
                         artist: metadata.common.artist || 'Unknown Artist',
                         album: metadata.common.album || 'Unknown Album',
                         duration: metadata.format.duration || 0,
                         hasLyrics: hasLyrics,
                         hasArtwork: !!picture,
-                        folderGroup: folderName // Allows frontend sorting if needed
+                        folderGroup: folderName
                     });
 
                     folderPlaylists[folderName].push(trackId);
@@ -114,12 +111,7 @@ app.get('/api/songs', async (req, res) => {
         }
 
         console.log(`[Multi-Library Scan] Aggregated ${allSongs.length} total tracks across directories.`);
-
-        // Return both the master track listing and the generated folder playlists maps configuration
-        res.json({
-            songs: allSongs,
-            autoPlaylists: folderPlaylists
-        });
+        res.json({ songs: allSongs, autoPlaylists: folderPlaylists });
 
     } catch (err) {
         console.error("[Library Scan Error]", err);
@@ -217,7 +209,6 @@ app.get('/api/artwork/:trackId', async (req, res) => {
             return res.send(picture.data);
         }
 
-        // Fallback: Elegant inline SVG if the file truly has no embedded art tags
         const baseName = path.parse(filePath).name;
         const displayInitials = baseName.substring(0, 2).toUpperCase();
 
@@ -238,10 +229,27 @@ app.get('/api/artwork/:trackId', async (req, res) => {
     }
 });
 
-// Launch Server
+// Helper function to extract the local network IPv4 address
+function getLocalIpAddress() {
+    const interfaces = os.networkInterfaces();
+    for (const interfaceName in interfaces) {
+        for (const iface of interfaces[interfaceName]) {
+            // Filter out loopback (127.0.0.1) and internal addresses, must be IPv4
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+
+// Launch Server listening on '0.0.0.0' (Broadcasting on local network network layer)
 app.listen(PORT, '0.0.0.0', () => {
+    const localIp = getLocalIpAddress();
     console.log(`================================================================`);
-    console.log(` 🎧  SCS Audio Orchestrator running on http://127.0.0.1:${PORT}`);
+    console.log(` 🎧  SCS Audio Orchestrator Running Successfully!`);
+    console.log(` 🏠  Local Engine Address:  http://localhost:${PORT}`);
+    console.log(` 🌐  Local Network Link:     http://${localIp}:${PORT}`);
     console.log(` 📂  Active Directories Tracked: ${MUSIC_DIRS.length}`);
     console.log(`================================================================`);
 });

@@ -92,12 +92,12 @@ trap "echo -e '\n🛑 Stopping engines and clearing runtime processes...'; kill 
 
 # 4. Start the backend server
 cd "$PROJECT_DIR/server" || exit
-npm run dev > /dev/null 2>&1 &
+npm run dev -- --host > /dev/null 2>&1 &
 SERVER_PID=$!
 
 # 5. Start the Vite client frontend
 cd "$PROJECT_DIR/client" || exit
-npm run dev > /dev/null 2>&1 &
+npm run dev -- --host > /dev/null 2>&1 &
 CLIENT_PID=$!
 
 # Wait for Vite port bindings to initialize completely
